@@ -57,3 +57,8 @@ htmlcov/
 
 # Docker
 *.dockerignore
+
+# Backup files
+*.backup
+*_old.py
+*_old.*

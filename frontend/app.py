@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
+import os
 from typing import Optional
 
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 def init_session_state():

@@ -22,12 +22,8 @@ class Settings(BaseSettings):
 
     # API Keys
     GEMINI_API_KEY: str
-    MARKET_DATA_API_KEY: str
-    MARKET_DATA_SECRET_KEY: Optional[str] = None
+    MARKET_DATA_API_KEY: str  # Finnhub API Key
     NEWS_API_KEY: str
-
-    # Market Data Provider
-    MARKET_DATA_PROVIDER: str = "alpaca"
 
     # Application
     ENVIRONMENT: str = "development"

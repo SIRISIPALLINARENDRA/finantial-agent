@@ -20,15 +20,19 @@ class NewsAndSentimentAgent:
     def __init__(self):
         self.agent = Assistant(
             name="News & Sentiment Analyst",
-            llm=Gemini(model="gemini-2.5-flash"),
+            llm=Gemini(model="gemini-2.0-flash-exp"),
             description="Specialized in analyzing financial news and market sentiment",
             instructions=[
-                "Analyze news articles for market impact",
-                "Evaluate sentiment (bullish, bearish, neutral)",
-                "Identify key themes and narratives",
-                "Assess credibility and relevance of sources",
-                "Provide balanced, objective analysis",
-                "Consider both short-term and long-term implications"
+                "Provide COMPREHENSIVE news sentiment analysis with detailed insights",
+                "Analyze all major news articles for market impact",
+                "Evaluate overall sentiment (bullish, bearish, neutral, mixed) with specific reasons",
+                "Identify key themes, catalysts, and narratives driving sentiment",
+                "Highlight major developments, earnings, partnerships, regulatory news",
+                "Assess potential market reactions and price implications",
+                "Provide structured, detailed analysis with bullet points and sections",
+                "Include specific quotes or key facts from important articles",
+                "Consider both immediate and longer-term market implications",
+                "Use clear, professional language with specific examples"
             ],
             markdown=True,
             show_tool_calls=False

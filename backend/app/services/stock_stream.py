@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import Dict, Set, Callable, Optional, List
 import asyncio
 import json
@@ -11,151 +10,7 @@ from ..schemas.market import StockPrice
 logger = logging.getLogger(__name__)
 
 
-class MarketDataProvider(ABC):
-    """Abstract base class for market data providers."""
-
-    @abstractmethod
-    async def connect(self):
-        """Establish connection to data provider."""
-        pass
-
-    @abstractmethod
-    async def disconnect(self):
-        """Close connection to data provider."""
-        pass
-
-    @abstractmethod
-    async def subscribe(self, tickers: List[str]):
-        """Subscribe to ticker updates."""
-        pass
-
-    @abstractmethod
-    async def unsubscribe(self, tickers: List[str]):
-        """Unsubscribe from ticker updates."""
-        pass
-
-    @abstractmethod
-    async def get_latest_quote(self, ticker: str) -> Optional[StockPrice]:
-        """Get the latest quote for a ticker."""
-        pass
-
-
-class AlpacaProvider(MarketDataProvider):
-    """Alpaca Markets WebSocket provider implementation."""
-
-    def __init__(self, api_key: str, secret_key: str):
-        self.api_key = api_key
-        self.secret_key = secret_key
-        self.ws = None
-        self.connected = False
-        self._subscribed_tickers: Set[str] = set()
-
-    async def connect(self):
-        """Connect to Alpaca WebSocket."""
-        try:
-            import websockets
-
-            # Alpaca WebSocket URL (for real-time data use IEX feed)
-            url = "wss://stream.data.alpaca.markets/v2/iex"
-            self.ws = await websockets.connect(url)
-
-            # Authenticate
-            auth_message = {
-                "action": "auth",
-                "key": self.api_key,
-                "secret": self.secret_key
-            }
-            await self.ws.send(json.dumps(auth_message))
-
-            response = await self.ws.recv()
-            response_data = json.loads(response)
-
-            if response_data[0].get("T") == "success":
-                self.connected = True
-                logger.info("Connected to Alpaca WebSocket")
-            else:
-                raise Exception(f"Authentication failed: {response_data}")
-
-        except Exception as e:
-            logger.error(f"Failed to connect to Alpaca: {e}")
-            raise
-
-    async def disconnect(self):
-        """Disconnect from Alpaca WebSocket."""
-        if self.ws:
-            await self.ws.close()
-            self.connected = False
-            logger.info("Disconnected from Alpaca WebSocket")
-
-    async def subscribe(self, tickers: List[str]):
-        """Subscribe to ticker updates."""
-        if not self.connected:
-            await self.connect()
-
-        subscribe_message = {
-            "action": "subscribe",
-            "trades": tickers,
-            "quotes": tickers,
-            "bars": tickers
-        }
-        await self.ws.send(json.dumps(subscribe_message))
-        self._subscribed_tickers.update(tickers)
-        logger.info(f"Subscribed to tickers: {tickers}")
-
-    async def unsubscribe(self, tickers: List[str]):
-        """Unsubscribe from ticker updates."""
-        unsubscribe_message = {
-            "action": "unsubscribe",
-            "trades": tickers,
-            "quotes": tickers,
-            "bars": tickers
-        }
-        await self.ws.send(json.dumps(unsubscribe_message))
-        self._subscribed_tickers.difference_update(tickers)
-        logger.info(f"Unsubscribed from tickers: {tickers}")
-
-    async def get_latest_quote(self, ticker: str) -> Optional[StockPrice]:
-        """Get the latest quote for a ticker."""
-        # This would typically call Alpaca's REST API for historical/snapshot data
-        # For real-time, you'd listen to the WebSocket stream
-        return None
-
-    async def listen(self, callback: Callable[[StockPrice], None]):
-        """Listen to WebSocket messages and invoke callback."""
-        while self.connected:
-            try:
-                message = await self.ws.recv()
-                data = json.loads(message)
-
-                for item in data:
-                    msg_type = item.get("T")
-
-                    # Handle trades
-                    if msg_type == "t":
-                        stock_price = StockPrice(
-                            ticker=item.get("S"),
-                            price=float(item.get("p")),
-                            volume=int(item.get("s", 0)),
-                            timestamp=datetime.fromisoformat(item.get("t").replace("Z", "+00:00"))
-                        )
-                        await callback(stock_price)
-
-                    # Handle quotes
-                    elif msg_type == "q":
-                        stock_price = StockPrice(
-                            ticker=item.get("S"),
-                            price=float(item.get("ap")),  # Ask price
-                            volume=0,
-                            timestamp=datetime.fromisoformat(item.get("t").replace("Z", "+00:00"))
-                        )
-                        await callback(stock_price)
-
-            except Exception as e:
-                logger.error(f"Error in WebSocket listener: {e}")
-                break
-
-
-class FinnhubProvider(MarketDataProvider):
+class FinnhubProvider:
     """Finnhub WebSocket and REST API provider implementation."""
 
     def __init__(self, api_key: str):
@@ -274,67 +129,18 @@ class FinnhubProvider(MarketDataProvider):
                 break
 
 
-class MockProvider(MarketDataProvider):
-    """Mock provider for testing and development."""
-
-    def __init__(self):
-        self.connected = False
-        self._subscribed_tickers: Set[str] = set()
-
-    async def connect(self):
-        self.connected = True
-        logger.info("Connected to Mock Provider")
-
-    async def disconnect(self):
-        self.connected = False
-        logger.info("Disconnected from Mock Provider")
-
-    async def subscribe(self, tickers: List[str]):
-        self._subscribed_tickers.update(tickers)
-        logger.info(f"Mock: Subscribed to {tickers}")
-
-    async def unsubscribe(self, tickers: List[str]):
-        self._subscribed_tickers.difference_update(tickers)
-        logger.info(f"Mock: Unsubscribed from {tickers}")
-
-    async def get_latest_quote(self, ticker: str) -> Optional[StockPrice]:
-        import random
-        return StockPrice(
-            ticker=ticker,
-            price=round(random.uniform(100, 500), 2),
-            volume=random.randint(1000, 100000),
-            timestamp=datetime.utcnow(),
-            change=round(random.uniform(-5, 5), 2),
-            change_percent=round(random.uniform(-2, 2), 2)
-        )
-
-
 class StockStreamManager:
-    """Manager for handling real-time stock data streams."""
+    """Manager for handling real-time stock data streams using Finnhub."""
 
     def __init__(self):
-        self.provider: Optional[MarketDataProvider] = None
+        self.provider: FinnhubProvider = None
         self.active_subscriptions: Dict[str, Set[str]] = {}  # user_id -> set of tickers
         self._initialize_provider()
 
     def _initialize_provider(self):
-        """Initialize the configured market data provider."""
-        provider_name = settings.MARKET_DATA_PROVIDER.lower()
-
-        if provider_name == "alpaca":
-            self.provider = AlpacaProvider(
-                api_key=settings.MARKET_DATA_API_KEY,
-                secret_key=settings.MARKET_DATA_SECRET_KEY
-            )
-        elif provider_name == "finnhub":
-            self.provider = FinnhubProvider(
-                api_key=settings.MARKET_DATA_API_KEY
-            )
-        elif provider_name == "mock":
-            self.provider = MockProvider()
-        else:
-            logger.warning(f"Unknown provider {provider_name}, using Mock")
-            self.provider = MockProvider()
+        """Initialize the Finnhub market data provider."""
+        self.provider = FinnhubProvider(api_key=settings.MARKET_DATA_API_KEY)
+        logger.info("Initialized Finnhub provider")
 
     async def subscribe_user(self, user_id: str, tickers: List[str]):
         """Subscribe a user to ticker updates."""

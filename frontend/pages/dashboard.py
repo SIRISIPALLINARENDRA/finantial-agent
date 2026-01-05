@@ -1,10 +1,11 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 from datetime import datetime
 import time
 
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 def get_headers() -> dict:

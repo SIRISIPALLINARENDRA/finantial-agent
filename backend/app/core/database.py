@@ -5,21 +5,12 @@ from typing import AsyncGenerator
 from .config import settings
 
 
-# Configure engine based on database type
-engine_kwargs = {
-    "echo": settings.DEBUG,
-    "future": True,
-}
-
-# Add pooling parameters only for MySQL/PostgreSQL, not SQLite
-if "sqlite" not in settings.DATABASE_URL.lower():
-    engine_kwargs.update({
-        "pool_pre_ping": True,
-        "pool_size": 10,
-        "max_overflow": 20
-    })
-
-engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
+# Configure engine for SQLite
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    future=True
+)
 
 AsyncSessionLocal = async_sessionmaker(
     engine,

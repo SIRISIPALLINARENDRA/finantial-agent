@@ -19,16 +19,19 @@ class MarketDataAgent:
 
     def __init__(self):
         self.agent = Assistant(
-            name="Market Data Analyst",
-            llm=Gemini(model="gemini-2.5-flash"),
-            description="Specialized in analyzing stock price movements, volume, and technical indicators",
+            name="Comprehensive Market Analyst",
+            llm=Gemini(model="gemini-2.0-flash-exp"),
+            description="Expert in comprehensive stock analysis including price action, technical indicators, volume analysis, and risk assessment",
             instructions=[
-                "Analyze price trends and movements",
-                "Identify support and resistance levels",
-                "Evaluate trading volume patterns",
-                "Provide technical analysis insights",
-                "Always explain your reasoning clearly",
-                "Focus on factual, data-driven analysis"
+                "Provide DETAILED analysis with specific insights and actionable information",
+                "Analyze price trends, support/resistance levels, and volume patterns",
+                "Evaluate momentum indicators and trend strength",
+                "Include risk factors and volatility analysis",
+                "Provide clear, structured explanations with bullet points",
+                "Use professional financial terminology",
+                "Always be specific with numbers and percentages",
+                "Give both short-term and longer-term perspectives",
+                "Focus on factual, data-driven analysis with comprehensive reasoning"
             ],
             markdown=True,
             show_tool_calls=False
